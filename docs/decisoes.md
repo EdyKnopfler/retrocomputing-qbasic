@@ -22,10 +22,11 @@ marcadas como tal até serem confirmadas.
   bisseção**, disparada por limiar de exclusões (20–25% sugerido). Ver
   [[reindexacao]].
 - **Duplicação de código aceita deliberadamente** entre as cópias do
-  algoritmo de árvore/sort para cada chave diferente, mitigada por
-  convenção de comentário nomeado + índice em .txt (não por geração de
-  código ou concatenação de fontes — já tentado e descartado antes por
-  ser difícil de debugar).
+  algoritmo de árvore/sort para cada chave diferente, e entre modelos de
+  dados (`TYPE`) replicados por cadastro. Mitigada por convenção de
+  comentário nomeado (`' REPETICAO: ...`) + índice em [[duplicacoes]]
+  (não por geração de código ou concatenação de fontes — já tentado e
+  descartado antes por ser difícil de debugar).
 
 ## 2026-08-08 — Índices de negócio e memória
 

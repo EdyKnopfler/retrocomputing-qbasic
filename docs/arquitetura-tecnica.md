@@ -130,10 +130,10 @@ Ver [[reindexacao]] (external sort + bisseção).
 * **Duplicação aceita deliberadamente** — concatenação de fontes
   ("compilação" por concatenação) já foi tentada e descartada (só dá
   pra debugar a versão compilada, não os fontes)
-* Mitigação leve: **comentário nomeando o algoritmo** (ex.:
-  `' ALGORITMO: busca em arvore binaria por chave string`) em cada
-  ocorrência + **índice em .txt** listando arquivos/linhas de cada nome,
-  pra localizar as demais cópias ao corrigir um bug
+* Mitigação leve: **comentário nomeando o trecho repetido** (ex.:
+  `' REPETICAO: busca em arvore binaria por chave string`) em cada
+  ocorrência, apontando pro **índice** [[duplicacoes]] — que lista
+  nome, propósito e arquivos/linhas de cada cópia
 
 ## Padrão geral do projeto
 

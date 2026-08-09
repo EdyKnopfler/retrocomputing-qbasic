@@ -87,8 +87,8 @@ MenuPrincipal:
 
 END
 
-' ALGORITMO: carga do indice primario (arvore binaria autoindexada) do
-' arquivo pra cache SoA em RAM - ver docs/algoritmos.md
+' REPETICAO: carga do indice primario (arvore binaria autoindexada) do
+' arquivo pra cache SoA em RAM - ver docs/duplicacoes.md
 SUB AbreIndiceCliente
   DIM r AS LONG
 
@@ -112,8 +112,8 @@ SUB AbreIndiceCliente
   NEXT r
 END SUB
 
-' ALGORITMO: carga do indice primario (arvore binaria autoindexada) do
-' arquivo pra cache SoA em RAM - ver docs/algoritmos.md
+' REPETICAO: carga do indice primario (arvore binaria autoindexada) do
+' arquivo pra cache SoA em RAM - ver docs/duplicacoes.md
 SUB AbreIndiceProduto
   DIM r AS LONG
 

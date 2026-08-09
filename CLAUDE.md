@@ -90,5 +90,7 @@ o resumo essencial:
   não endereçamento implícito/posicional — decidido, ver
   [`docs/decisoes.md`](docs/decisoes.md).
 - **Duplicação de código é aceita** entre cópias do algoritmo de árvore
-  para cada chave diferente, mitigada por comentário nomeado + índice em
-  .txt — não por geração/concatenação de código (já tentado, descartado).
+  (e de modelos de dados) para cada chave diferente, mitigada por
+  comentário nomeado (`' REPETICAO: ...`) + índice em
+  [`docs/duplicacoes.md`](docs/duplicacoes.md) — não por
+  geração/concatenação de código (já tentado, descartado).
