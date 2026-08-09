@@ -5,18 +5,13 @@ arquitetura escolhida, não óbvias a partir do código.
 
 ## `COMMON`/`COMMON SHARED` casa por posição, não por nome
 
-Ao encadear módulos via `CHAIN`, o QBasic casa as variáveis de `COMMON`
-**pela ordem de declaração e pelo tipo**, não pelo nome da variável. Se um
-módulo no meio da corrente declarar o bloco em ordem diferente, ou
-esquecer uma variável (mesmo uma que ele não use), os dados dos topos de
-árvore se desalinham silenciosamente — sem erro, só dado errado.
-
-**Regra:** todo módulo que participa da corrente de `CHAIN` replica a
-declaração `COMMON SHARED` idêntica, na mesma ordem, mesmo que não use
-todas as variáveis compartilhadas.
-* Vale também pra `CONST` de tamanho de array compartilhado (ex.:
-  capacidade de cache) — valor diferente entre módulos gera array de
-  tamanho diferente, mesmo efeito de desalinhar o `COMMON`.
+* `CHAIN` casa variáveis de `COMMON` pela **ordem de declaração e tipo**,
+  não pelo nome — ordem diferente ou variável esquecida desalinha os
+  topos de árvore silenciosamente (sem erro, só dado errado)
+* **Regra:** todo módulo da corrente replica a `COMMON SHARED` idêntica,
+  na mesma ordem, mesmo sem usar todas as variáveis
+* Vale também pra `CONST` de tamanho de array compartilhado — valor
+  diferente entre módulos gera array de tamanho diferente, mesmo efeito
 
 ## `COMMON SHARED` de array exige `AS`, mesmo já tendo `DIM` com tipo
 
@@ -32,17 +27,16 @@ todas as variáveis compartilhadas.
 
 ## `CHAIN` reinicia o módulo do topo — setup não-idempotente precisa de guarda
 
-* `CHAIN "X.BAS"` sempre roda `X.BAS` do início — código de
-  inicialização fora de `SUB`/`FUNCTION` executa de novo a cada volta.
-* Arquivo aberto sobrevive ao `CHAIN`; reabrir o mesmo número (`#1`)
-  de novo dá erro "file already open".
-* **Confirmado por teste real:** `DIM`/`COMMON SHARED` re-executado no
-  topo do módulo, na volta de um `CHAIN`, **não apaga** valor recebido
-  via `COMMON` (nem escalar `TYPE`, nem array estático). Harness de
-  sentinela em `testes/SISVALID.BAS`/`testes/CLIVALID.BAS`, rodado no
-  `QBASIC.EXE`.
+* `CHAIN "X.BAS"` sempre roda `X.BAS` do início — inicialização fora de
+  `SUB`/`FUNCTION` executa de novo a cada volta
+* Arquivo aberto sobrevive ao `CHAIN`; reabrir o mesmo número (`#1`) de
+  novo dá erro "file already open"
+* **Confirmado:** `DIM`/`COMMON SHARED` re-executado na volta de um
+  `CHAIN` **não apaga** valor recebido via `COMMON` (escalar, `TYPE` ou
+  array estático) — harness de sentinela em
+  `testes/SISVALID.BAS`/`testes/CLIVALID.BAS`, `QBASIC.EXE`
 * **Padrão adotado:** flag em `COMMON SHARED` (`indicesCarregados AS
-  INTEGER`) guardando o setup de rodar mais de uma vez por sessão. Ver
+  INTEGER`) guardando o setup de rodar só 1x por sessão. Ver
   `SISTEMA.BAS`:
   ```basic
   IF indicesCarregados = 0 THEN
@@ -53,40 +47,26 @@ todas as variáveis compartilhadas.
 
 ## Limite de 64KB por array
 
-QBasic não suporta "huge arrays" (isso só existe no BASIC PDS com
-`/AH`). Um único array `DIM`'d não pode passar de 65536 bytes — limite de
-segmento, independente do orçamento total de memória estática disponível.
-Ver cálculo de capacidade em [[arquitetura-tecnica]].
+* QBasic não suporta "huge arrays" (só o BASIC PDS com `/AH`) — teto de
+  65536 bytes **por array**, não pelo total de estática disponível. Ver
+  [[arquitetura-tecnica]]
 
 ## Risco de degeneração sob endereçamento implícito (posicional)
 
-Se os nós da árvore forem endereçados de forma implícita (filho esquerdo
-de `n` em `n*2`, direito em `n*2+1`, sem campos de ponteiro próprios),
-inserção de chaves em sequência crescente (ex.: código de barras
-cadastrado em lote, em ordem do fornecedor) degenera a árvore numa
-corrente quase linear — e a posição de cada nó nessa corrente **dobra a
-cada nível**. Poucas dezenas de inserções nessa ordem já geram RRN muito
-acima de qualquer limite prático de array ou arquivo, mesmo com poucos
-nós reais cadastrados.
-
-**Status: confirmado e descartado** — evidência empírica em
-`/home/ederson/Documentos/DOS/projeto/testes/teste3.bas`, que tentou essa
-fórmula posicional e precisou de 10x o espaço (`nChaves * 10`) pra
-sobreviver a 800 chaves reais sem estourar o array. Decisão final: usar
-ponteiros explícitos (esquerda/direita como campos `LONG` próprios) — ver
-[[decisoes]] e [[arquitetura-tecnica]]. Esta seção fica mantida como
-registro histórico do porquê a alternativa foi descartada, pra não
-repetir o erro depois.
+* Endereçamento implícito (`n*2`/`n*2+1`) + inserção em sequência
+  crescente (ex.: código de barras em lote, ordem do fornecedor)
+  degenera a árvore numa corrente quase linear — RRN **dobra a cada
+  nível**, estoura array/arquivo em poucas dezenas de inserções
+* **Confirmado e descartado** — evidência e decisão final (ponteiros
+  explícitos) em [[decisoes]]. Mantido aqui só como lembrete pra não
+  repetir o erro
 
 ## Convenção de nó zerado exige write-through
 
-A regra "RRN pequeno → olha o array em RAM; RRN grande → busca no
-arquivo; RRN zero → não existe nó" só funciona se o array em RAM for
-espelho exato dos primeiros N registros do arquivo de índice. Qualquer
-inserção/atualização cujo RRN caia dentro da faixa cacheada precisa
-gravar nos dois lugares (array E arquivo). Esquecer isso quebra a busca
-silenciosamente — a busca vai continuar "achando" a versão antiga no
-array.
+* Regra "RRN pequeno → array; RRN grande → arquivo; RRN zero → não
+  existe" só funciona se o array em RAM for espelho exato dos primeiros
+  N registros do arquivo — toda escrita nessa faixa precisa ir nos dois
+  lugares, senão a busca continua "achando" a versão antiga no array
 
 ## Arquivos-fonte `.BAS`: só ASCII puro, com CRLF
 
@@ -99,11 +79,11 @@ array.
 
 ## `DIR$` não existe neste dialeto
 
-Idiomatismo de Visual Basic, não de QBasic/QuickBASIC. Pra checar se um
-arquivo existe antes de um `OPEN ... FOR RANDOM` (que cria o arquivo se
-não existir): `ON ERROR GOTO` + `OPEN ... FOR INPUT` (erro = não
-existe), ou `LOF(1) = 0` depois de abrir em modo RANDOM. Confirmado
-funcionando em `testes/ARVDISCO.BAS`, rodado de verdade no `QBASIC.EXE`.
+* Idiomatismo de Visual Basic, não de QBasic/QuickBASIC
+* Pra checar se arquivo existe antes de `OPEN ... FOR RANDOM` (que cria
+  se não existir): `ON ERROR GOTO` + `OPEN ... FOR INPUT` (erro = não
+  existe), ou `LOF(1) = 0` depois de abrir em modo RANDOM. Confirmado em
+  `testes/ARVDISCO.BAS`, `QBASIC.EXE`
 
 ## `ON ERROR GOTO <rótulo>` só vale no programa principal
 
@@ -117,6 +97,6 @@ funcionando em `testes/ARVDISCO.BAS`, rodado de verdade no `QBASIC.EXE`.
 
 ## Cliente "Consumidor" (ID 0) não é um registro real
 
-Não tentar buscar ID 0 na árvore de clientes — ele não existe lá por
-design (ver [[regras-de-negocio]]). O fluxo de venda precisa tratar esse
-ID como caso especial antes de qualquer busca de índice.
+* Não buscar ID 0 na árvore de clientes — não existe lá por design (ver
+  [[regras-de-negocio]]). Fluxo de venda trata como caso especial antes
+  de qualquer busca de índice

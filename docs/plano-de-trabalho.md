@@ -1,10 +1,9 @@
 # Plano de trabalho / próximos passos
 
-Abordagem por **protótipos isolados**, testados no emulador (DOSBox e/ou
-pcjs.org, que emula 5150/XT/286/386 — este último é útil especificamente
-para medir tempo real de external sort e reindexação em hardware de
-época), documentando os procedimentos/algoritmos que funcionam antes de
-integrá-los ao sistema final.
+* Abordagem por **protótipos isolados**, testados no emulador (DOSBox
+  e/ou pcjs.org — este último emula 5150/XT/286/386, útil pra medir
+  tempo real de external sort/reindexação em hardware de época),
+  documentados antes de integrar ao sistema final
 
 ## Ordem sugerida
 

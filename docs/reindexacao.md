@@ -1,7 +1,7 @@
 # Reindexação periódica
 
-Necessária porque exclusões lógicas (registros marcados como deletados)
-vão desbalanceando a árvore ao longo do tempo.
+* Necessária porque exclusões lógicas (registros marcados como
+  deletados) desbalanceiam a árvore ao longo do tempo
 
 ## Processo
 
@@ -36,10 +36,7 @@ sort**, evitando acesso randômico espalhado.
 
 ## Relação com o risco de degeneração do índice
 
-Se a decisão de [[arquitetura-tecnica]] for endereçamento implícito
-(posicional) para os nós da árvore em vez de ponteiros explícitos, a
-reindexação periódica passa a ser não só uma otimização, mas uma
-**mitigação necessária** contra o crescimento explosivo de RRN por
-inserção sequencial (ver [[armadilhas]]) — o que pode exigir gatilho de
-reindexação bem mais agressivo que o limiar de 20–25% pensado para
-exclusões.
+* Não se aplica com a arquitetura atual (ponteiros explícitos, ver
+  [[decisoes]]) — só seria mitigação **necessária** (não só otimização)
+  contra crescimento explosivo de RRN se o índice usasse endereçamento
+  implícito, opção descartada (ver [[armadilhas]])

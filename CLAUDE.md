@@ -44,10 +44,9 @@ Porte alvo: alguns milhares de produtos, algumas centenas de clientes.
 
 ## Estilo de documentação
 
-* `docs/*.md` e este arquivo: bullet curto e imperativo, não prosa —
-  "faça assim, não faça assado". Use e abuse de sub-bullets
-* Só justificar (uma cláusula curta, não parágrafo) quando o motivo não
-  for óbvio ou afetar quando a regra vale/não vale
+Regras completas em [`docs/convencoes.md`](docs/convencoes.md#escrita-de-documentação-docsmd-e-claudemd):
+bullet curto, justificativa de no máximo uma cláusula, um lugar
+canônico por fato (os demais arquivos linkam, não repetem).
 
 ## Documentação
 
@@ -70,9 +69,10 @@ o resumo essencial:
   array, risco de degeneração de índice, etc.).
 - [`docs/plano-de-trabalho.md`](docs/plano-de-trabalho.md) — roteiro de
   protótipos isolados e estado atual.
-- [`docs/convencoes.md`](docs/convencoes.md) — estilo de código pros
-  arquivos de produção (indentação, tratamento de erro). Não vale pra
-  protótipos em `testes/`, que podem ser escritos de qualquer jeito.
+- [`docs/convencoes.md`](docs/convencoes.md) — regras de escrita de
+  documentação, e estilo de código pros arquivos de produção
+  (indentação, tratamento de erro; não vale pra protótipos em
+  `testes/`, que podem ser escritos de qualquer jeito).
 
 ## Resumo essencial
 
@@ -86,9 +86,9 @@ o resumo essencial:
 - **Memória medida** (`PRINT FRE(-1), FRE(-2), FRE("")`): 157972B estática,
   1052B stack, 30884B strings. Teto de 65536B por array individual
   (limite de segmento do QBasic).
-- **Decisão em aberto:** conteúdo estrutural do nó do índice — ponteiros
-  explícitos (esquerda/direita) vs. endereçamento implícito/posicional.
-  Ver [`docs/decisoes.md`](docs/decisoes.md).
+- **Nó do índice:** ponteiros explícitos (`RRN_esquerda`/`RRN_direita`),
+  não endereçamento implícito/posicional — decidido, ver
+  [`docs/decisoes.md`](docs/decisoes.md).
 - **Duplicação de código é aceita** entre cópias do algoritmo de árvore
   para cada chave diferente, mitigada por comentário nomeado + índice em
   .txt — não por geração/concatenação de código (já tentado, descartado).

@@ -1,4 +1,24 @@
-# Convenções de código (arquivos de produção)
+# Convenções
+
+## Escrita de documentação (`docs/*.md` e `CLAUDE.md`)
+
+* Bullet curto e imperativo, não prosa corrida — "faça assim, não faça
+  assado". Abuse de sub-bullets em vez de frases coordenadas
+* Justificativa: no máximo uma cláusula curta — só quando o motivo não
+  é óbvio ou muda quando a regra vale/não vale. Nunca um parágrafo
+* Cada fato/decisão tem **um lugar canônico**; os demais arquivos
+  linkam (`[[nome]]`) em vez de repetir o racional/evidência inteiros
+  * `decisoes.md` — histórico: decisão + motivo + evidência (arquivo de
+    teste, números de carga)
+  * `arquitetura-tecnica.md` — estado atual (o quê, não o porquê); link
+    pra `decisoes.md` quando o racional for necessário
+  * `armadilhas.md` — só efeito prático do erro + como evitar, sem
+    repetir o racional de arquitetura já registrado em `decisoes.md`
+* Não narrar o processo de deliberação (cogitado → testado →
+  descartado) fora de `decisoes.md` — os outros arquivos citam só a
+  conclusão
+
+## Código (arquivos de produção)
 
 Regras de estilo pro código "de verdade" do sistema — **não** pros
 protótipos isolados em `testes/`, que podem ser escritos de qualquer
@@ -6,7 +26,7 @@ jeito. Fonte: `/home/ederson/Documentos/DOS/projeto/testes/teste.bas`,
 apontado pelo usuário em 2026-08-09 como referência de convenção. Lista
 cresce conforme o usuário for indicando mais.
 
-## Indentação
+### Indentação
 
 * Código executável do programa principal (fora de qualquer
   SUB/FUNCTION) é indentado 2 espaços, mesmo não estando dentro de um
@@ -24,7 +44,7 @@ cresce conforme o usuário for indicando mais.
     OPEN "c:\projeto\vendas1.csv" FOR INPUT AS #1
   ```
 
-## Tratamento de erro
+### Tratamento de erro
 
 * `ON ERROR GOTO <rótulo>` logo antes da operação arriscada; o rótulo
   de continuação vem logo depois da operação, ainda no fluxo principal
