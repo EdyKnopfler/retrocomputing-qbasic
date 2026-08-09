@@ -14,6 +14,42 @@ esquecer uma variável (mesmo uma que ele não use), os dados dos topos de
 **Regra:** todo módulo que participa da corrente de `CHAIN` replica a
 declaração `COMMON SHARED` idêntica, na mesma ordem, mesmo que não use
 todas as variáveis compartilhadas.
+* Vale também pra `CONST` de tamanho de array compartilhado (ex.:
+  capacidade de cache) — valor diferente entre módulos gera array de
+  tamanho diferente, mesmo efeito de desalinhar o `COMMON`.
+
+## `COMMON SHARED` de array exige `AS`, mesmo já tendo `DIM` com tipo
+
+* `COMMON SHARED nomeArray()` sem `AS tipo` dá erro **"AS clause
+  required"**, mesmo com `DIM` anterior já tipado.
+* Repetir o tipo na linha do `COMMON`:
+  ```basic
+  DIM cacheClienteChave(1 TO 50) AS STRING * 11
+  COMMON SHARED cacheClienteChave() AS STRING * 11   ' AS obrigatorio
+  ```
+* Confirmado no `QBASIC.EXE` de verdade (dialogo modal em tela),
+  `SISTEMA.BAS`/`CLIENTES.BAS`, 2026-08-09.
+
+## `CHAIN` reinicia o módulo do topo — setup não-idempotente precisa de guarda
+
+* `CHAIN "X.BAS"` sempre roda `X.BAS` do início — código de
+  inicialização fora de `SUB`/`FUNCTION` executa de novo a cada volta.
+* Arquivo aberto sobrevive ao `CHAIN`; reabrir o mesmo número (`#1`)
+  de novo dá erro "file already open".
+* **Confirmado por teste real:** `DIM`/`COMMON SHARED` re-executado no
+  topo do módulo, na volta de um `CHAIN`, **não apaga** valor recebido
+  via `COMMON` (nem escalar `TYPE`, nem array estático). Harness de
+  sentinela em `testes/SISVALID.BAS`/`testes/CLIVALID.BAS`, rodado no
+  `QBASIC.EXE`.
+* **Padrão adotado:** flag em `COMMON SHARED` (`indicesCarregados AS
+  INTEGER`) guardando o setup de rodar mais de uma vez por sessão. Ver
+  `SISTEMA.BAS`:
+  ```basic
+  IF indicesCarregados = 0 THEN
+    ' abre arquivos, monta cache - so 1x por sessao
+    indicesCarregados = -1
+  END IF
+  ```
 
 ## Limite de 64KB por array
 

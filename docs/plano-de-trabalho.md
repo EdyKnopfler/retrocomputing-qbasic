@@ -73,5 +73,14 @@ que uma sintaxe/função é válida.
     explícito); índice primário autoindexado fica pra outro protótipo
 * Passos 3-5 (external sort, agregação, reindexação) ainda não
   prototipados
+* Pontapé inicial do sistema real (não protótipo isolado) feito:
+  `SISTEMA.BAS` (menu + carga dos índices primários de cliente/produto
+  em `COMMON SHARED`) e `CLIENTES.BAS` (placeholder: mostra contagem
+  vinda do índice compartilhado, `CHAIN` de volta)
+  * Fluxo testado de verdade no `QBASIC.EXE` (harness automatizado com
+    sentinela + confirmação interativa do usuário), 2026-08-09
+  * Índice primário ainda é só esqueleto de navegação (chave/esquerda/
+    direita) — layout de negócio (nome, endereço etc.) fica pra quando
+    o cadastro completo entrar
 * Decisão de conteúdo do nó (ponteiros explícitos vs. implícitos): já
   fechada — ver [[decisoes]] e [[armadilhas]]
