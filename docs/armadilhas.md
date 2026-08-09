@@ -52,6 +52,33 @@ gravar nos dois lugares (array E arquivo). Esquecer isso quebra a busca
 silenciosamente — a busca vai continuar "achando" a versão antiga no
 array.
 
+## Arquivos-fonte `.BAS`: só ASCII puro, com CRLF
+
+* Sem acento/caractere fora de `0x00-0x7F` — um só já corrompeu o parser
+  do editor DOS (linhas se fundiram visualmente, erro de sintaxe num
+  ponto sem relação aparente com o acento)
+* Terminador de linha CRLF, não LF
+* Checar fora do DOS: `file arquivo.BAS` deve dizer "ASCII text, with
+  CRLF line terminators"
+
+## `DIR$` não existe neste dialeto
+
+Idiomatismo de Visual Basic, não de QBasic/QuickBASIC. Pra checar se um
+arquivo existe antes de um `OPEN ... FOR RANDOM` (que cria o arquivo se
+não existir): `ON ERROR GOTO` + `OPEN ... FOR INPUT` (erro = não
+existe), ou `LOF(1) = 0` depois de abrir em modo RANDOM. Confirmado
+funcionando em `testes/ARVDISCO.BAS`, rodado de verdade no `QBASIC.EXE`.
+
+## `ON ERROR GOTO <rótulo>` só vale no programa principal
+
+* Rótulo não pode ficar dentro de `SUB`/`FUNCTION` — diferente de
+  Visual Basic
+* Pra decidir algo (ex.: "arquivo já existe?") dentro de uma rotina
+  chamada por uma SUB: resolver no programa principal, antes da
+  chamada, guardando o resultado numa `SHARED` que a SUB só lê
+* Confirmado pelo usuário em 2026-08-08, depois de eu colocar o rótulo
+  dentro de `SUB AbreIndice` em `ARVDISCO.BAS` por engano
+
 ## Cliente "Consumidor" (ID 0) não é um registro real
 
 Não tentar buscar ID 0 na árvore de clientes — ele não existe lá por

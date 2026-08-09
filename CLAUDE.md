@@ -21,6 +21,34 @@ vendas, relatórios mensais de vendas por produto, por cliente e por dia.
 
 Porte alvo: alguns milhares de produtos, algumas centenas de clientes.
 
+## Ao trabalhar com QBasic (instrução para a IA)
+
+* Pouco material de treino sobre QBasic existe — modelos de IA erram
+  muito nesse dialeto, tipicamente vazando idiomatismos de Visual Basic
+  ou práticas modernas que não existem aqui (casos reais em
+  [`docs/armadilhas.md`](docs/armadilhas.md): `DIR$`, rótulo de `ON
+  ERROR GOTO` dentro de `SUB`)
+* Diante de erro/dúvida de sintaxe: não empilhar hipótese sobre
+  hipótese sozinho
+  1. Consultar o manual oficial (link em
+     [`docs/plano-de-trabalho.md`](docs/plano-de-trabalho.md))
+  2. Se não resolver, **perguntar direto ao usuário** — ele já programou
+     bastante em QBasic
+  3. Registrar o aprendizado em
+     [`docs/armadilhas.md`](docs/armadilhas.md)
+* Validar sempre rodando de fato no `QBASIC.EXE` (o interpretador
+  gratuito, alvo verdadeiro do exercício) — não usar `BC.EXE`/
+  QuickBASIC como substituto de validação, gera mais atrito do que
+  ajuda (dialetos diferentes). Ver
+  [`docs/plano-de-trabalho.md`](docs/plano-de-trabalho.md)
+
+## Estilo de documentação
+
+* `docs/*.md` e este arquivo: bullet curto e imperativo, não prosa —
+  "faça assim, não faça assado". Use e abuse de sub-bullets
+* Só justificar (uma cláusula curta, não parágrafo) quando o motivo não
+  for óbvio ou afetar quando a regra vale/não vale
+
 ## Documentação
 
 Detalhes vivem em [`docs/`](docs/), organizados por tema — este arquivo é só
@@ -42,6 +70,9 @@ o resumo essencial:
   array, risco de degeneração de índice, etc.).
 - [`docs/plano-de-trabalho.md`](docs/plano-de-trabalho.md) — roteiro de
   protótipos isolados e estado atual.
+- [`docs/convencoes.md`](docs/convencoes.md) — estilo de código pros
+  arquivos de produção (indentação, tratamento de erro). Não vale pra
+  protótipos em `testes/`, que podem ser escritos de qualquer jeito.
 
 ## Resumo essencial
 

@@ -1,0 +1,6 @@
+# Saida gerada rodando os testes - nao versionar, so os .BAS/.csv importam
+*.TXT
+*.IDX
+*.OBJ
+*.EXE
+*.MAP

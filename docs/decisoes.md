@@ -106,6 +106,24 @@ registro é o bastante?"
   arquivo). Custo: acopla campos de navegação da árvore com campos de
   negócio no mesmo `TYPE` do índice primário.
 
+### 2026-08-09 — Backing em arquivo do índice: validado (não só desenhado)
+
+`testes/ARVDISCO.BAS` (repo SISTEMA) rodou de verdade no `QBASIC.EXE` e
+confirmou, com I/O real (não só em memória):
+
+- Dois `TYPE` (nó + cabeçalho) num arquivo `RANDOM` só, sob um `LEN=`
+  comum
+- Write-through cache/arquivo via `LeNo`/`GravaNo` como único ponto de
+  acesso
+- `Busca`/`Insere` com alocação linear de RRN
+- **Persistência entre execuções** — reabrir sem apagar o `.IDX` retoma
+  o cabeçalho corretamente
+- Carga de 10.000 linhas de CSV (1.899 chaves distintas, 8.101
+  duplicatas), buscas corretas via cache e via arquivo
+
+Cobre o caso de índice **secundário** (com `dadoRRN`). Índice primário
+autoindexado ainda não prototipado. Detalhes em [[arquitetura-tecnica]].
+
 **Em aberto: múltiplos índices por entidade.** O desenho original do
 projeto (CLAUDE.md antes da reorganização em `docs/`) previa índices por
 nome além de código/CPF (ex.: cliente por nome, cliente por código;

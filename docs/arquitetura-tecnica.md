@@ -81,11 +81,30 @@ separados, com ponteiro pro RRN no arquivo primário. Detalhamento
 completo em [[decisoes]] (ainda em aberto se busca por nome entra no
 escopo).
 
-**Protótipos de referência** (validam ponteiros explícitos + alocação
-linear em memória, ainda sem backing em arquivo):
-`/home/ederson/Documentos/DOS/projeto/testes/ARVORE.BAS`,
-`teste4.bas`, `teste5.bas`. `teste3.bas` documenta a tentativa descartada
-de endereçamento implícito.
+**Protótipos de referência:**
+
+* Ponteiros explícitos + alocação linear, só em memória (sem backing em
+  arquivo): `/home/ederson/Documentos/DOS/projeto/testes/ARVORE.BAS`,
+  `teste4.bas`, `teste5.bas`. `teste3.bas` documenta a tentativa
+  descartada de endereçamento implícito
+* **Índice com backing em arquivo (caso completo): `testes/ARVDISCO.BAS`**
+  no repo SISTEMA — protótipo isolado do caso de índice **secundário**
+  (com `dadoRRN` explícito), rodado de verdade no `QBASIC.EXE` (não só
+  compilado). Validou:
+  * Dois `TYPE` (nó + cabeçalho) convivendo no mesmo arquivo `RANDOM`
+    sob um `LEN=` só — cabeçalho no RRN 1, nós a partir do RRN 2
+  * Cache SoA em RAM espelhando os primeiros N registros do arquivo,
+    com `LeNo`/`GravaNo` como único ponto de leitura/escrita
+    (write-through por construção — ver seção seguinte)
+  * `Busca`/`Insere` (busca devolve pai+lado, inserção aloca RRN
+    linear via contador no cabeçalho)
+  * **Persistência entre execuções** — reabrir sem apagar o `.IDX`
+    retoma `proxRRNLivre`/`raizRRN` do cabeçalho corretamente
+  * Carga real: 10.000 linhas de CSV, 1.899 chaves distintas
+    inseridas, 8.101 duplicatas detectadas; buscas de verificação
+    corretas via cache e via arquivo
+  * Índice primário autoindexado (sem `dadoRRN`) fica pra outro
+    protótipo — não testado ainda
 
 ### Convenção de nó zerado / fora do array
 
@@ -100,6 +119,12 @@ array em RAM é espelho exato dos primeiros N registros do arquivo de
 precisa ser feita nos dois lugares (write-through), senão a regra "RRN
 pequeno → olha o array; RRN grande → dá GET no arquivo" quebra
 silenciosamente. Ver [[armadilhas]].
+
+Confirmado em `testes/ARVDISCO.BAS`: `GET` além do fim do arquivo
+retorna registro zerado sem erro (usado no espelhamento inicial do
+cache, sem precisar checar "esse RRN já existe?"), e o par
+`LeNo`/`GravaNo` como único ponto de acesso garante o write-through por
+construção, não por disciplina de cada call site.
 
 ## Memória e `CHAIN`
 
