@@ -227,6 +227,27 @@ arquitetura escolhida, não óbvias a partir do código.
   2026-08-15 (parâmetro `pos AS LONG` e `CONST N_TOTAL&`, os dois
   rejeitados; renomeados pra `posDump`/`totalRegistros&`)
 
+## `AS ANY` em `DECLARE` + `TYPE` concreto na `SUB`: quebra em chamada recursiva (causa não confirmada)
+
+* Padrão usado pra contornar "`TYPE` tem que vir antes do `DECLARE`" (ver
+  acima): `DECLARE SUB Foo (... , x AS ANY)` com a `SUB` de verdade usando
+  `x AS MeuTipo`. Funciona para chamadas externas (de outras `SUB`s), mas
+  numa `SUB` que chama **a si mesma** (recursão) passando uma variável do
+  tipo concreto pro parâmetro `AS ANY`, o `QBASIC.EXE` recusa compilar:
+  **"Parameter type mismatch"**, apontando pra chamada recursiva
+* **Mecanismo não confirmado** — é erro de compilação (o programa nunca
+  chega a rodar), então não é sobre semântica de cópia/referência; hipótese
+  não verificada é que a chamada recursiva é checada contra o cabeçalho
+  real da própria `SUB` (`AS MeuTipo`), não contra o `DECLARE` (`AS ANY`),
+  e a combinação dá conflito. Não investigado a fundo — resolvido
+  contornando, não a causa raiz
+* **Correção adotada:** eliminar o `AS ANY` de vez — mover `CONST`/`TYPE`
+  pra antes do bloco `DECLARE` (não há razão pra não fazer isso na maioria
+  dos casos) e usar o tipo concreto também no `DECLARE`
+* Confirmado ao vivo no `QBASIC.EXE`, `testes/BPTREE1.BAS`
+  (`BpttInserirRecursivo` chamando a si mesma com `promocaoSubir AS
+  InfoPromocao`), 2026-08-15
+
 ## Cliente "Consumidor" (ID 0) não é um registro real
 
 * Não buscar ID 0 na árvore de clientes — não existe lá por design (ver
