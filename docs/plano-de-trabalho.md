@@ -111,14 +111,22 @@ que uma sintaxe/função é válida.
     saltos só-em-disco, remoção/reativação de nó fora do cache, e
     inserção de filho novo sob pai fora do cache (ponteiro atualizado
     corretamente no arquivo) — 30/30 verificações OK
-* Passo 3 (external sort) e passo 4 (agregação) ainda não prototipados
+* **Passo 3 (external sort): mecanismo genérico (runs + merge k-vias)
+  prototipado e validado no `QBASIC.EXE`**, `testes/EXTSORT1.BAS`,
+  2026-08-15 — só o algoritmo de ordenação, chave-string genérica, sem
+  agregação (passo 4 abaixo) e sem plugar ainda no dump de reindexação
+  ou em vendas reais. 31/31 verificações OK em 4 cenários (embaralhado
+  com duplicatas, já ordenado, ordem reversa, N menor que 1 buffer).
+  Detalhes, números de I/O e o que ficou em aberto (merge
+  multi-passada): [[decisoes]]
+* Passo 4 (agregação) ainda não prototipado
 * **Passo 5 (reindexação): reconstrução por bissecção prototipada e
   validada no `QBASIC.EXE`**, `testes/REINDEX1.BAS`, 2026-08-15 — cobre
   só o passo 2 do processo ([[reindexacao]]; dump gerado já ordenado,
-  sem external sort de verdade — isso é o passo 3 acima). 8/8
-  verificações OK, incluindo evidência empírica da otimização de I/O
-  (saída sempre sequencial, entrada de 1000 pra 71 seeks). Detalhes,
-  números e o que ficou em aberto: [[decisoes]]
+  sem external sort de verdade — isso é o passo 3 acima, prototipado
+  separadamente). 8/8 verificações OK, incluindo evidência empírica da
+  otimização de I/O (saída sempre sequencial, entrada de 1000 pra 71
+  seeks). Detalhes, números e o que ficou em aberto: [[decisoes]]
 * Pontapé inicial do sistema real (não protótipo isolado) feito:
   `SISTEMA.BAS` (menu + carga dos índices primários de cliente/produto
   em `COMMON SHARED`) e `CLIENTES.BAS` (placeholder inicial, depois

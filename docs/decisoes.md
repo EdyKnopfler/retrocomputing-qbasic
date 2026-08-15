@@ -349,3 +349,70 @@ replicado por chave, [[duplicacoes]]), em troca de a garantia "resetar" a
 cada reindexação e uma faixa de ganho não-determinístico entre uma
 reindexação e a próxima — coerente com a premissa de "programar pra
 escassez" da raiz do [CLAUDE.md](../CLAUDE.md)
+
+## 2026-08-15 — External sort genérico: validado (mecanismo de runs + merge)
+
+Passo 3 do roteiro ([[plano-de-trabalho]]), ainda não prototipado.
+`testes/EXTSORT1.BAS` cobre só o algoritmo de ordenação (gerar runs +
+merge k-vias), chave-string genérica — sem agregação (passo 4, separado)
+e sem plugar ainda no dump de reindexação ([[reindexacao]]) ou em vendas
+reais. Motivação de testar a fundo desde já: o algoritmo será
+**duplicado** várias vezes (dump de reindexação + relatórios por
+produto/cliente/dia), mesmo padrão de [[duplicacoes]].
+
+**Decisões de desenho, fechadas com o usuário antes do protótipo:**
+
+- **Runs num único arquivo** (`RUNS1.DAT`), cada run é uma faixa
+  contígua de RRNs — mesma técnica de faixa+seek do `REINDEX1.BAS`, em
+  vez de 1 arquivo por run. Motivo: evita abrir 1 handle de arquivo por
+  run (risco real de estourar `FILES=` do CONFIG.SYS do DOS conforme o
+  número de runs cresce — já mordemos o limite 8.3 de nome antes, ver
+  [[plano-de-trabalho]]).
+- **Shell sort** (in-place, sem recursão) pra ordenar cada buffer em RAM
+  antes de virar run. Motivo: sem array auxiliar (diferente de merge
+  sort); sem risco de recursão (já tivemos gotcha de recursão quebrando
+  no QBasic, ver [[armadilhas]], caso `BPTREE1.BAS`); sem pior caso
+  patológico em entrada já ordenada/revertida (diferente de quicksort
+  ingênuo) — relevante porque esses dois casos entraram no roteiro de
+  teste abaixo. Vale o código extra por ser duplicado depois.
+
+**Validação:** 31/31 verificações OK, 4 cenários (N=1000
+embaralhado+duplicatas/12 runs de BUFRUN=90, N=50 já ordenado, N=50
+ordem reversa, N=10 menor que 1 buffer/1 run só): contagem preservada,
+cada run individualmente ordenada, saída totalmente ordenada
+(comparação adjacente completa, não amostragem), número de runs =
+CEIL(N/BUFRUN).
+
+**I/O da geração de runs: totalmente sequencial**, independente de N —
+1 seek de entrada + 1 seek de saída. Runs são gravadas em sequência sem
+lacuna, então `GET`/`PUT` com número de registro omitido encadeia o
+arquivo inteiro (mesma técnica de bloco do `REINDEX1.BAS`).
+
+**I/O do merge: sem bônus de localidade, ao contrário da bisseção do
+`REINDEX1.BAS`.** Janela de leitura persistente por run garante que
+alternar de qual run é a vez de ler não custa seek (só o esgotamento de
+uma janela custa) — mas, diferente do `REINDEX1.BAS` (onde a ordem BFS
+fez `mid`s consecutivos caírem perto uns dos outros no dump, dando 71
+seeks vs. baseline ~1000), a ordem de leitura do merge é ditada pelas
+**chaves** (intercalação de k runs cujas faixas de valor se sobrepõem
+inteiramente) — não há vizinhança nenhuma pra explorar. Medido: N=1000,
+12 runs, janela=20 → **56 seeks de entrada**, exatamente o teto teórico
+(Σ CEIL(tamanhoRun/janela) = 11×5 + 1×1 = 56), não abaixo dele —
+confirma a hipótese, não é só uma estimativa pessimista de projeto.
+Saída do merge continua puramente sequencial (10 seeks = N/BUFSAI,
+mesmo padrão do `REINDEX1.BAS`).
+
+**Fora do escopo deste protótipo** (não invalida a validação acima, só
+não cobre):
+
+- **Agregação** (passo 4, separado) — este protótipo só ordena, não
+  agrupa/soma.
+- **Merge multi-passada**: se o número de runs superar o que cabe em
+  janelas simultâneas, precisaria de merge em várias passadas — não
+  implementado (porte alvo do projeto não deve gerar runs demais nesse
+  ponto; avaliar se a hipótese se sustenta quando o algoritmo for
+  duplicado pra um uso real).
+- **Plugar em uso real**: dump de reindexação de verdade (troca o
+  `GeraDump` fake do `REINDEX1.BAS`) e relatórios mensais por
+  produto/cliente/dia — algoritmo ainda não duplicado pra nenhum uso
+  real, [[duplicacoes]] não entra ainda.
