@@ -111,8 +111,14 @@ que uma sintaxe/função é válida.
     saltos só-em-disco, remoção/reativação de nó fora do cache, e
     inserção de filho novo sob pai fora do cache (ponteiro atualizado
     corretamente no arquivo) — 30/30 verificações OK
-* Passos 3-5 (external sort, agregação, reindexação) ainda não
-  prototipados
+* Passo 3 (external sort) e passo 4 (agregação) ainda não prototipados
+* **Passo 5 (reindexação): reconstrução por bissecção prototipada e
+  validada no `QBASIC.EXE`**, `testes/REINDEX1.BAS`, 2026-08-15 — cobre
+  só o passo 2 do processo ([[reindexacao]]; dump gerado já ordenado,
+  sem external sort de verdade — isso é o passo 3 acima). 8/8
+  verificações OK, incluindo evidência empírica da otimização de I/O
+  (saída sempre sequencial, entrada de 1000 pra 71 seeks). Detalhes,
+  números e o que ficou em aberto: [[decisoes]]
 * Pontapé inicial do sistema real (não protótipo isolado) feito:
   `SISTEMA.BAS` (menu + carga dos índices primários de cliente/produto
   em `COMMON SHARED`) e `CLIENTES.BAS` (placeholder inicial, depois

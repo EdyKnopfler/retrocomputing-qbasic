@@ -15,7 +15,7 @@ CONST tamChaveCliente% = 11        ' CPF normalizado
 CONST tamChaveProduto% = 13        ' codigo de barras EAN-13
 CONST RRNPRIMEIRONO& = 1           ' tambem e SEMPRE o RRN da raiz - ver docs/decisoes.md
 
-CONST capacidadeCacheCliente% = 500   ' teto real medido - ver docs/decisoes.md
+CONST capacidadeCacheCliente% = 511   ' proximo degrau de garantia (2^9-1) - ver docs/decisoes.md
 CONST capacidadeCacheProduto% = 5041  ' teto de array dinamico (65536\13) - ver docs/decisoes.md
 
 CONST RRNULTIMOCACHECliente& = RRNPRIMEIRONO& + capacidadeCacheCliente% - 1

@@ -211,6 +211,22 @@ arquitetura escolhida, não óbvias a partir do código.
   (usuário reportou o diálogo); mesmo erro existia em `CLIENTES.BAS`
   (TYPE depois do bloco DECLARE), corrigido junto
 
+## Identificadores: sem underscore, e nome de função embutida colide mesmo com sufixo de tipo
+
+* **Sem underscore em nome de variável/constante** — só letra, dígito e
+  ponto (`.`) são aceitos; `_` dá erro de sintaxe (`DECLARE SUB`: "expected
+  variable or )" no ponto de uso, não necessariamente na declaração).
+  Diferente de VB moderno, onde underscore é comum. Convenção adotada:
+  camelCase (`totalRegistros&`, não `total_registros&` nem `N_TOTAL&`)
+* **Nome de função/statement embutido (ex.: `POS`, a função de posição do
+  cursor de tela) não pode ser usado como identificador — nem com sufixo
+  de tipo** (`pos%`/`pos&` também colidem, o sufixo não desambigua).
+  Sintoma: erro de sintaxe no ponto de uso (`DECLARE SUB`/chamada), não
+  necessariamente com mensagem óbvia apontando pra palavra reservada
+* Ambos confirmados ao vivo no `QBASIC.EXE`, `testes/REINDEX1.BAS`,
+  2026-08-15 (parâmetro `pos AS LONG` e `CONST N_TOTAL&`, os dois
+  rejeitados; renomeados pra `posDump`/`totalRegistros&`)
+
 ## Cliente "Consumidor" (ID 0) não é um registro real
 
 * Não buscar ID 0 na árvore de clientes — não existe lá por design (ver

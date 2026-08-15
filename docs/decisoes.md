@@ -180,5 +180,172 @@ Faltava medir o orçamento real e decidir a capacidade de produção.
   `capacidadeCacheProduto% = 5041`** (teto de array). Validado contra
   os `.IDX` reais do usuário (`testes/SISVAL3.BAS`): carga correta (1
   cliente, 2 produtos, valores conferem), `FRE(-1)` sobra ~40848 bytes
-  depois da carga completa dos dois índices
+  depois da carga completa dos dois índices. **`capacidadeCacheCliente%`
+  revisado depois pra 511** (mesmo dia, ver seção de reindexação abaixo)
+  — sem custo (bem dentro do teto de 5957), ganha o próximo degrau de
+  garantia de profundidade
 - Detalhes numéricos e tabelas: [[arquitetura-tecnica]]
+
+## 2026-08-15 — Reconstrução por bisseção: numeração de RRN em largura (não pré-ordem)
+
+Prototipagem de [[reindexacao]] (passo 5 do roteiro, [[plano-de-trabalho]])
+ainda não começou em código — esta entrada fecha o desenho antes do
+protótipo. Validação empírica do desenho: ver subseção abaixo.
+
+- **Numeração de RRN em largura** (sequência de heap: nível 0 = RRN 1,
+  nível `k` = RRN `[2^k, 2^(k+1))`), não em pré-ordem. Motivo: o cache em
+  RAM é espelho write-through dos **primeiros RRN do arquivo**, não da
+  árvore ([[arquitetura-tecnica]], "Convenção de nó zerado/fora do
+  array") — só numeração em largura garante que esse prefixo coincida
+  com o topo real da árvore, dos dois galhos
+- **Pré-ordem cogitado e descartado**: nele, os primeiros RRN são a raiz
+  mais um mergulho inteiro pelo galho esquerdo antes de tocar no
+  direito — se a capacidade do cache for menor que a subárvore esquerda,
+  o cache fica sem nenhum nó do lado direito, por mais raso que seja.
+  Pior que a numeração por ordem de inserção já usada hoje (que ao menos
+  tende a favorecer nós de ambos os lados, por mecânica natural de
+  inserção em BST)
+- **Não é só teórico — bate direto na carga do índice na inicialização**:
+  `AbreIndiceCliente`/`AbreIndiceProduto` ([[duplicacoes]], baseado em
+  `AbreIndice` de `testes/ARVDISCO.BAS`) já é uma leitura sequencial dos
+  primeiros RRN do arquivo até encher o cache — mecanismo que só carrega
+  algo útil se RRN baixo corresponder a raso na árvore. Reindexar em
+  pré-ordem não quebraria essa carga (continuaria rodando sem erro nem
+  aviso), só encheria o cache com um subconjunto torto — degradação
+  silenciosa, do mesmo tipo que [[armadilhas]] já cataloga
+- **Numeração em largura via aritmética pura, `RRN_esquerda = 2*base` /
+  `RRN_direita = 2*base+1` com `mid` arredondado pra cima: tentada e
+  descartada.** Hipótese era que isso reproduzia o formato de árvore
+  completa (heap-shape) pra qualquer N — verificado por simulação
+  (`analise_numeracao.py`) que bate com o formato correto em só 1 de 199
+  tamanhos de árvore testados (só N=1, trivial). A divisão
+  esquerda/direita de árvore completa depende de quantos nós sobram no
+  último nível parcialmente preenchido, não é uma fórmula simples de
+  arredondamento — não compensa calcular só pra evitar a fila
+- **Numeração em largura exige fila explícita** de faixas pendentes (não
+  cabe só na pilha de recursão, que só acompanha profundidade, não
+  largura de nível): RRN atribuído no momento em que o nó é enfileirado
+  — mesmo mecanismo de "próxima posição livre" já usado na inserção
+  normal, sem fórmula fechada. Motivo de precisar da fila: largura não
+  preserva "subárvore = faixa contígua de RRN de saída" (propriedade que
+  pré-ordem tinha) — uma subárvore em largura fica espalhada entre
+  vários níveis, então gravar em bloco exige processar nível a nível
+- **Buffer de saída: obrigatório, não é otimização especulativa.** Sem
+  ele, a aplicação intercala `GET` (dump) / `PUT` (saída) registro a
+  registro. O MS-DOS é monotarefa — executa exatamente a sequência de
+  chamadas que a aplicação emite, sem reordenar — então disparar uma
+  rajada de gravação sequencial em vez de intercalar nunca é pior,
+  **independente de `BUFFERS=`** (no pior caso empata, no melhor caso
+  evita alternância de verdade); não precisa medir pra justificar a
+  decisão, só mediria o tamanho do ganho. Acumula nós do topo (via fila)
+  num buffer em memória; ao fechar um nível, 1 seek + gravação
+  sequencial do buffer inteiro
+- **Em aberto**: o atalho "faixa cabe no buffer, resolve tudo de uma vez
+  em memória" não pode disparar só por tamanho — se disparar enquanto
+  sub-árvores irmãs do mesmo nível (ou mais rasas) ainda estão pendentes
+  na fila, numera/grava aquele pedaço fora de ordem, furando a garantia
+  "nível completo antes de avançar". Precisa ser condicionado à
+  profundidade (só liberar depois que a faixa relevante pro cache já foi
+  processada nível a nível) — desenho ainda não fechado, avaliar no
+  protótipo
+
+### 2026-08-15 — Reconstrução por bisseção: validada (não só desenhada)
+
+`testes/REINDEX1.BAS` rodou no `QBASIC.EXE` de verdade e confirmou, com
+I/O real, o desenho acima (fila FIFO, largura, buffers pequenos de
+propósito no teste — 100 registros de entrada/saída, 1000 registros no
+total):
+
+- **8/8 verificações OK**: nós gravados = total; percurso em-ordem via
+  ponteiros reproduz a sequência ordenada original (bissecção + amarração
+  de ponteiros corretos); profundidade máxima 9 (dentro do teto teórico
+  ⌈log2(1000)⌉=10); **BFS independente** (percorre o arquivo final pelos
+  ponteiros, sem depender de como foi montado) confirma RRN visitado em
+  sequência estrita 1,2,3...1000 — numeração em largura de verdade, não
+  só por construção
+- **Buffer de saída: previsão bate exata com a medição** — 10 seeks
+  (1000/100), sempre sequencial. Não é coincidência: como a fila FIFO
+  garante RRN de destino crescente em sequência estrita (provado no
+  desenho acima), a escrita nunca precisa reordenar nada, só acumular e
+  despejar
+- **Buffer de entrada: reduz de 1000 pra 71 seeks** (929 leituras vieram
+  do buffer, sem I/O nenhum) — evidência de que a fila processa faixas da
+  esquerda pra direita dentro de cada nível, então `mid`s consecutivos
+  tendem a cair perto uns dos outros no dump mesmo alternando entre
+  subárvores irmãs
+- **Técnica de bloco confirmada no manual, não suposta**: `GET`/`PUT` com
+  número de registro omitido continua sequencialmente da posição do
+  `GET`/`PUT` anterior, sem seek (qbasic.net) — usada de verdade no
+  protótipo pro "1 seek + rajada sequencial" de cada bloco
+- Dois gotchas de sintaxe novos, sem relação com o desenho em si
+  (identificador com underscore; `POS` como nome de parâmetro, mesmo com
+  sufixo de tipo) — [[armadilhas]]
+
+**Fora do escopo deste protótipo** (não invalida a validação acima, só
+não cobre): dump gerado já ordenado direto, sem rodar external sort de
+verdade (passo 3 do roteiro, [[plano-de-trabalho]], ainda não
+prototipado); o atalho de buffer cruzando fronteira de nível continua em
+aberto (bullet acima); escala de teste (1000 registros, buffer de 100) é
+bem menor que produção (milhares de produtos) — só valida a lógica, não
+tempo real de I/O em hardware de época.
+
+### Limite do invariante "início do arquivo = topo da árvore": garantia é de N, não de K
+
+O invariante "início do arquivo = topo da árvore" (o que permite carregar
+o cache com uma leitura sequencial simples) **não é tudo-ou-nada** — é uma
+garantia que cresce em degraus, independente da capacidade do array:
+
+- **A garantia é propriedade de N (quantos registros existiam na última
+  reindexação), não de K (capacidade do cache).** Numa árvore em largura,
+  a profundidade `d` só fica **100% sem buraco** quando N ultrapassa
+  `2^(d+1) - 1` — os degraus são 511, 1023, 2047, 4095, 8191... Assim que
+  N passa de um desses números, tudo até aquela profundidade está
+  garantido, **de graça, sem depender de K nem um pouco** — K só decide
+  quanto *além* dessa garantia cabe no cache
+- **Faixa sem garantia**: entre N e K sobra uma faixa preenchida por
+  inserção avulsa depois da reindexação (não pela bisseção limpa) — sem
+  garantia de profundidade nenhuma ali, o que cai é o que a ordem de
+  chegada das inserções trouxer. Pra produtos (K=5041, próximo degrau de
+  garantia abaixo dele = 4095), essa faixa "de sorte" chega a ~946
+  posições (~1/5 de K) — nunca faz mal ter essa faixa (mais capacidade
+  nunca piora nada), só não dá pra contar com ela como garantida
+- **Se o cadastro inteiro cabe no cache (N ≤ K), a degeneração da árvore
+  não importa — pode até deixar degenerar.** "Cacheado" e "existe" viram
+  a mesma coisa quando ninguém fica de fora (todo RRN ≤ N ≤ K está no
+  cache por definição), então não há distinção nenhuma entre nó raso e
+  fundo pra fazer. Esse é o caso de clientes (K=500 já dimensionado com
+  folga sobre "algumas centenas", [[regras-de-negocio]]) — na prática,
+  o problema desta seção só existe pra cadastros que rotineiramente
+  ultrapassam a capacidade do cache (produtos)
+- **Decisão: usar a capacidade máxima do array (K=5041 produtos, ~500
+  clientes), sem cortar pra um "limiar seguro" artificial** (ex.: 4095,
+  cogitado e descartado). Cortar K não aumenta garantia nenhuma — a
+  garantia depende só de N cruzar o próprio degrau, nunca de K — cortar
+  só jogaria fora capacidade de bônus sem eliminar risco algum,
+  garantindo aliás que aquela faixa **sempre** vá pro disco, quando com
+  K máximo ela pode ser lida da RAM em vez disso (verificado por
+  simulação, `verifica_ponto_usuario.py`: profundidade≤11 idêntica e
+  100% garantida com K=4095 e com K=5041, mesma N)
+- **Risco real remanescente**: reindexar com N abaixo do primeiro degrau
+  relevante (511/4095) deixa buracos rasos que inserções orgânicas podem
+  preencher fora do cache — verificado por simulação
+  (`verifica_invariante2.py`, N=3000, K=5041, 6000 inserções): 386 de
+  3959 nós não cacheados pousaram tão rasos quanto o topo garantidamente
+  cacheado. Esse risco não muda com K (é sobre N, não sobre K) — a
+  mitigação real é gatilho de reindexação também por crescimento do
+  cadastro, não só razão de exclusão, pra encurtar o tempo com N pequeno
+- **Em qualquer caso, é degradação de desempenho, não de correção** — a
+  busca sempre acha o registro certo, via ponteiro explícito; o único
+  custo de cair fora da faixa garantida é 1 acesso a disco a mais
+
+**Trade-off de fundo, aceito conscientemente**: é o preço de usar árvore
+binária comum + reindexação periódica em vez de B-Tree/B+Tree. B+Tree
+rebalanceia a cada inserção — mantém profundidade uniforme o tempo todo,
+garantia permanente, sem faixa de sorte nenhuma — mas exige nó com
+múltiplas chaves e lógica de split/merge em cascata, bem mais complexa
+que busca/inserção binária simples. Esse projeto aceita o oposto
+deliberadamente: código simples (mesmo algoritmo de busca/inserção
+replicado por chave, [[duplicacoes]]), em troca de a garantia "resetar" a
+cada reindexação e uma faixa de ganho não-determinístico entre uma
+reindexação e a próxima — coerente com a premissa de "programar pra
+escassez" da raiz do [CLAUDE.md](../CLAUDE.md)

@@ -36,7 +36,7 @@ CONST tamChaveCliente% = 11        ' CPF normalizado
 CONST tamChaveProduto% = 13        ' codigo de barras EAN-13
 CONST RRNPRIMEIRONO& = 1           ' tambem e SEMPRE o RRN da raiz - ver docs/decisoes.md
 
-CONST capacidadeCacheCliente% = 500   ' precisa casar com SISTEMA.BAS
+CONST capacidadeCacheCliente% = 511   ' precisa casar com SISTEMA.BAS
 CONST capacidadeCacheProduto% = 5041  ' idem
 
 CONST RRNULTIMOCACHECliente& = RRNPRIMEIRONO& + capacidadeCacheCliente% - 1

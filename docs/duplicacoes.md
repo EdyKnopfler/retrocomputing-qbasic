@@ -65,8 +65,8 @@ zeraria o cache já populado.
 - `CONST tamChaveCliente%` até `RRNULTIMOCACHEProduto&`: `SISTEMA.BAS`,
   `CLIENTES.BAS`, `PRODUTOS.BAS` (`ESQUERDO%`/`DIREITO%` só em
   `CLIENTES.BAS`/`PRODUTOS.BAS` — `SISTEMA.BAS` só carrega o cache, não
-  percorre a árvore). Valores atuais: `capacidadeCacheCliente% = 500`,
-  `capacidadeCacheProduto% = 5041`
+  percorre a árvore). Valores atuais: `capacidadeCacheCliente% = 511`,
+  `capacidadeCacheProduto% = 5041` (ver [[decisoes]])
 - `REDIM cacheClienteChave/Esq/Dir`, `cacheProdutoChave/Esq/Dir`: só
   `SISTEMA.BAS`, dentro do guarda `indicesCarregados = 0`
 - `COMMON SHARED` (contadores `proxRRNLivre*`/`qtdInseridos*`/
