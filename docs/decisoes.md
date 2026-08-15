@@ -99,3 +99,39 @@ não prototipado. Detalhes: [[arquitetura-tecnica]].
 **Em aberto: múltiplos índices por entidade.** Desenho original previa
 busca por nome além de código/CPF — ainda não decidido se entra no
 escopo. Não muda a decisão de manter índice separado do dado.
+
+### 2026-08-14 — Índice primário autoindexado: sem registro de cabeçalho
+
+Protótipo (`testes/CADCLI1.BAS`/`CADCLI2.BAS`, cadastro de clientes por
+CPF) fecha o caso que tinha ficado em aberto (índice **primário**
+autoindexado, sem `dadoRRN` — só o secundário estava validado em
+`ARVDISCO.BAS`).
+
+- **Raiz é sempre o RRN 1** (primeiro registro gravado) — não precisa de
+  campo `raizRRN` persistido. Alocação é linear/sem gaps e remoção é só
+  flag (nó nunca sai do lugar), então nada jamais move a raiz; uma
+  reindexação futura escreveria a nova raiz primeiro de novo, mantendo o
+  invariante
+- **`proxRRNLivre`/`qtdInseridos` derivam de `LOF(1) \ LEN(registro)`**
+  — todo slot alocado é uma inserção completa (reativação de nó
+  removido reaproveita o RRN, não aloca), então a contagem de registros
+  do arquivo já é a resposta, sem precisar persistir contador
+- **`qtdExcluidos` não sai do `LOF`** (precisa da flag de cada
+  registro), mas é tabulado de graça no mesmo loop que já povoa o cache
+  em `AbreArquivo` — sem leitura extra de disco
+- **Consequência: nenhum registro de cabeçalho no arquivo.** Ganhos:
+  menos 1 `PUT` por inserção/remoção (antes gravava nó + cabeçalho a
+  cada operação), e `RRNPRIMEIRONO&` vira `1` em vez de `2` (um RRN a
+  mais de capacidade de cache, marginal)
+- **Motivo de não ter ficado óbvio de saída:** o truque de "nó zero"
+  (`arvore(0)` como raiz fake, ver `ARVORE.BAS` em
+  `/home/ederson/Documentos/DOS/projeto/testes/`) só funciona em array
+  em RAM — `GET`/`PUT` de arquivo `RANDOM` exige `recordnumber >= 1`
+  (manual QBasic, confirmado; ver [[armadilhas]]), então RRN 0 nunca
+  poderia ser um registro real de qualquer forma. Isso só ficou claro
+  comparando o protótipo em array com a restrição real de arquivo — não
+  é uma extrapolação óbvia de um pro outro
+- **Reaproveita nó removido na reinserção** (mesmo CPF depois de
+  `MarcaRemovido`): sobrescreve os campos de negócio e zera `excluido`
+  no mesmo RRN, em vez de criar um nó novo — evita a mesma chave em duas
+  posições da árvore. Duplicado **ativo** continua rejeitado

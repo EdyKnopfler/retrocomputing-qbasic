@@ -1,5 +1,7 @@
 # Saida gerada rodando os testes - nao versionar, so os .BAS/.csv importam
 *.TXT
+*.LOG
+*.DAT
 *.IDX
 *.OBJ
 *.EXE

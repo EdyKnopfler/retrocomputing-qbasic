@@ -25,8 +25,14 @@
   GOTO` global + gravação em arquivo (ver "Executar provas em QBasic"
   abaixo)
 * **Limite de nome 8.3 do DOS** — 8 caracteres antes do ponto, 3
-  depois. Fora disso falha silencioso (arquivo não é criado/achado, sem
-  erro)
+  depois. **Não é sempre silencioso**: violar o limite no argumento do
+  `QBASIC.EXE /RUN arquivo.BAS` (nome do próprio `.BAS`) trava num
+  diálogo modal "Bad file name" — confirmado ao vivo com
+  `testes/SISVALID2.BAS` (9 caracteres antes do ponto), 2026-08-15,
+  corrigido renomeando pra `SISVAL2.BAS`. Violar o limite num `OPEN`/
+  `KILL` dentro do programa também gera erro trapeável "Bad file name"
+  (não "não criado/achado" — ver [[armadilhas]], caso
+  `testes/TESTSYS1.BAS`/`NAOEXISTE.XXX`)
 
 ### Executar provas em QBasic (sem travar, sem tela)
 
@@ -49,6 +55,22 @@
 * Se o `timeout` não matar o DOSBox (acontece — ele ignora SIGTERM
   parado num modal), `kill -9` direto no PID
 * Ler o arquivo de saída depois que o DOSBox sai/é morto
+* **`< arquivo` no `-c` do DOSBox não é redirecionamento de stdin de
+  verdade** — o shell do DOSBox faz *stuffing* do buffer de teclado da
+  BIOS, limitado a ~15 caracteres. Um `LINE INPUT` isolado e curto
+  funciona (confirmado, `testes/TESTIN1.BAS`); um roteiro de tela com
+  múltiplos `INPUT`/`LINE INPUT` em sequência (dezenas de linhas) trava
+  sem digitar nada, sem erro visível (confirmado tentando validar
+  `CLIENTES.BAS` fim-a-fim, 2026-08-15). Não há `xdotool` disponível
+  neste ambiente pra simular teclas de verdade na janela. **Tela
+  interativa com múltiplos prompts em sequência exige teste manual do
+  usuário** — só a lógica por trás (SUBs chamadas direto, sem `INPUT`)
+  dá pra validar headless
+* `> arquivo` no `-c` do DOSBox **redireciona a saída de tela** (`PRINT`
+  sem `#`) de verdade pro arquivo — mas **não usar junto com `<`** na
+  mesma chamada: `QBASIC.EXE /RUN X.BAS < IN.TXT > OUT.TXT` quebra o
+  modo de vídeo em tela cheia (tela preta, nem o "menu" aparece).
+  Confirmado, 2026-08-15
 
 **Referência de linguagem:** [manual do QBasic 1.1 em
 qbasic.net](https://qbasic.net/en/qb-manual/qb11/overview.htm) —
@@ -69,17 +91,77 @@ que uma sintaxe/função é válida.
     retomou `proxRRNLivre`/`raizRRN` do cabeçalho e tratou as 10.000
     linhas como duplicatas
   * Representa o caso de índice **secundário** (com `dadoRRN`
-    explícito); índice primário autoindexado fica pra outro protótipo
+    explícito)
+* Índice **primário** autoindexado (cliente por CPF, com campos de
+  negócio completos) prototipado e validado em `testes/CADCLI1.BAS` +
+  `CADCLI2.BAS`, rodando de verdade no `QBASIC.EXE`:
+  * Duas fases, dois processos `QBASIC.EXE` separados — fase 1 insere
+    em arquivo vazio; fase 2 recarrega o mesmo arquivo do zero (memória
+    nova) e continua operando, provando que o topo da árvore volta do
+    disco corretamente
+  * 34/34 verificações passaram (inserção, rejeição de duplicado ativo,
+    busca por CPF existente/inexistente, remoção lógica, reativação de
+    CPF removido reaproveitando o RRN, contadores)
+  * Fecha a decisão de desenho: sem registro de cabeçalho, raiz sempre
+    RRN 1, contadores derivados de `LOF` — ver [[decisoes]]
+  * Caminho "nó além do array" validado à parte em `testes/CADCLI3.BAS`
+    (cache de propósito minúsculo, 2 nós, igual à técnica do
+    `ARVDISCO.BAS`): cadeia de 9 clientes em ordem crescente de CPF
+    (pior caso — árvore toda enviesada), busca profunda atravessando 7
+    saltos só-em-disco, remoção/reativação de nó fora do cache, e
+    inserção de filho novo sob pai fora do cache (ponteiro atualizado
+    corretamente no arquivo) — 30/30 verificações OK
 * Passos 3-5 (external sort, agregação, reindexação) ainda não
   prototipados
 * Pontapé inicial do sistema real (não protótipo isolado) feito:
   `SISTEMA.BAS` (menu + carga dos índices primários de cliente/produto
-  em `COMMON SHARED`) e `CLIENTES.BAS` (placeholder: mostra contagem
-  vinda do índice compartilhado, `CHAIN` de volta)
+  em `COMMON SHARED`) e `CLIENTES.BAS` (placeholder inicial, depois
+  substituído pelo cadastro completo — ver bullet abaixo)
   * Fluxo testado de verdade no `QBASIC.EXE` (harness automatizado com
     sentinela + confirmação interativa do usuário), 2026-08-09
-  * Índice primário ainda é só esqueleto de navegação (chave/esquerda/
-    direita) — layout de negócio (nome, endereço etc.) fica pra quando
-    o cadastro completo entrar
+* **Cadastro de clientes completo implementado** em `CLIENTES.BAS`
+  (busca por CPF, insere, edita, remove logicamente), 2026-08-15:
+  * `SISTEMA.BAS` atualizado pro desenho sem cabeçalho (ver
+    [[decisoes]]) — `NoClientePrimario` agora carrega o layout de
+    negócio completo (antes só esqueleto de navegação)
+  * Tela: CPF em branco volta ao menu; achou (ativo) → apresenta +
+    `[E]ditar/[R]emover/[V]oltar`; não achou (ou achou removido
+    logicamente, tratado como não encontrado) →
+    `[I]nserir/[V]oltar`; editar mantém campo em branco = inalterado
+    (sem edição nativa no QBasic); remover pede confirmação `[S/N]`;
+    toda operação volta direto ao menu ao terminar
+  * `LINE INPUT` em vez de `INPUT` em todo campo de texto — `INPUT`
+    trata vírgula como separador mesmo com 1 variável só (confirmado
+    no manual), quebraria endereço/complemento digitados livremente
+  * Lógica de árvore (`BuscaCliente`/`InsereOuReativaCliente`/
+    `MarcaRemovidoCliente`/etc.) validada headless (sem a tela) em
+    `testes/CLIVAL1.BAS`, 18/18 verificações OK — cobre inserção,
+    duplicado ativo rejeitado, busca, edição direta, remoção lógica,
+    reativação com mesmo RRN
+  * Camada de tela (`LINE INPUT`/`CLS`/fluxo `E`/`R`/`I`/`V`) validada
+    manualmente pelo usuário no `QBASIC.EXE` de verdade (não dava pra
+    automatizar — ver limitação de teclado em "Ferramentas e ambiente
+    de teste" acima), 2026-08-15: aprovado
+* **Cadastro de produtos completo implementado** em `PRODUTOS.BAS`
+  (busca por código de barras EAN-13, insere, edita, remove
+  logicamente), 2026-08-15 — mesmo algoritmo/tela de `CLIENTES.BAS`
+  (ver [[duplicacoes]]), só 2 campos de negócio (descrição + preço,
+  ambos obrigatórios) em vez de 6:
+  * `SISTEMA.BAS` atualizado — `NoProdutoPrimario` ganhou layout de
+    negócio completo (antes só esqueleto de navegação)
+  * Único elemento novo em relação a `CLIENTES.BAS`: campo `preço`
+    (`SINGLE`, primeiro campo numérico do sistema) — lido como texto
+    via `LINE INPUT` e convertido com `VAL()` na hora de gravar, pra
+    não depender de `INPUT` num campo numérico (que trata Enter em
+    branco como erro "Redo from start", incompatível com o padrão
+    "Enter mantém" da edição). `VAL("")`/`VAL(texto inválido)` = 0,
+    confirmado no manual — usado pra rejeitar preço em branco/inválido
+    na inserção
+  * Lógica de árvore não foi re-testada (código idêntico ao de
+    `CLIENTES.BAS`, já provado) — só o que muda foi checado headless
+    em `testes/PRDVAL1.BAS`, 16/16 verificações OK (inclui `SINGLE`
+    sobrevivendo ao `GET`/`PUT` com casas decimais)
+  * Camada de tela **não validada interativamente ainda** — só smoke
+    test headless confirmando que carrega sem diálogo de sintaxe
 * Decisão de conteúdo do nó (ponteiros explícitos vs. implícitos): já
   fechada — ver [[decisoes]] e [[armadilhas]]

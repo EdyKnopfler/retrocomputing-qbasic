@@ -77,6 +77,73 @@ arquitetura escolhida, não óbvias a partir do código.
 * Checar fora do DOS: `file arquivo.BAS` deve dizer "ASCII text, with
   CRLF line terminators"
 
+## RRN de arquivo randômico começa em 1, não em 0
+
+* `GET`/`PUT` de arquivo `RANDOM`: `recordnumber` válido é **1 a
+  2147483647** — registro 0 não é permitido (manual QBasic, statement
+  `GET`: "The first record or byte position in a file is 1")
+* Diferente de array QBasic puro (que aceita índice 0) — não confundir
+  com protótipos só-em-memória (`ARVORE.BAS`/`teste4.bas`), que podem
+  ter usado índice 0 livremente
+* **Implicação de desenho:** cabeçalho do índice não pode ficar no RRN
+  0. Em índice **secundário** com cabeçalho próprio (`ARVDISCO.BAS`),
+  isso significa `RRNHEADER& = 1` e primeiro nó em `RRNPRIMEIRONO& = 2`.
+  Convém também porque RRN 0 já é usado como sentinela de "subárvore
+  vazia" em `esquerda`/`direita` — se fosse um registro real gravável, a
+  convenção ficaria ambígua
+* Índice **primário** autoindexado (`testes/CADCLI1.BAS`/`CADCLI2.BAS`)
+  nem precisa de registro de cabeçalho — ver [[decisoes]]
+* Confirmado consultando o manual oficial (qbasic.net), 2026-08-14
+
+## `ON ERROR GOTO` cujo rótulo do handler é a linha seguinte não arma a trap
+
+* Rótulo do handler **imediatamente após** a instrução arriscada, sem
+  `RESUME` explícito (handler = ponto de continuação, alcançado só por
+  fluxo normal quando não há erro), **não funciona** — erro não
+  trapeado, cai no diálogo modal do `QBASIC.EXE` mesmo com `ON ERROR
+  GOTO` ativo. Confirmado no `QBASIC.EXE` de verdade, `testes/
+  CADCLI1.BAS`, 2026-08-15 (usuário precisou clicar OK manualmente)
+* **Causa exata, isolada por teste A/B** (`testes/TESTSYS1.BAS` vs.
+  `testes/TESTRES1.BAS`, 2026-08-15): **não** é "qualquer código depois
+  do rótulo sem `RESUME` trava". Rótulo seguido só de `PRINT`/`SYSTEM`
+  comuns, sem nenhum `ON ERROR` novo, roda liso, sem diálogo. O que
+  trava é **tentar executar outro `ON ERROR` (inclusive `GOTO 0`, que
+  só desliga o trap) enquanto o trap atual ainda está aberto, sem
+  `RESUME`** — é isso que o manual chama de "reaching the end of an
+  error-handling routine without finding RESUME" → erro **"No
+  RESUME"**. Ou seja: o próximo `ON ERROR` é o marcador de "fim da
+  rotina de tratamento" nesse dialeto sem blocos estruturados; só ele
+  (não código comum) exige `RESUME` antes
+* **Correção:** handler precisa de `RESUME <rótulo>` explícito, com o
+  caminho de sucesso pulando o handler via `GOTO` — idioma já usado em
+  `ARVDISCO.BAS`/`SISVALID.BAS` e documentado em
+  [[convencoes]]:
+  ```basic
+  ON ERROR GOTO SemArquivo
+  KILL "ARQUIVO.DAT"
+  GOTO Apagou
+  SemArquivo:
+  RESUME Apagou
+  Apagou:
+  ON ERROR GOTO 0
+  ```
+* Não usar o atalho de "rótulo único, sem RESUME, caindo direto por
+  fluxo normal" mesmo parecendo equivalente na leitura
+* **Mecanismo completo do travamento** (confirmado com repro isolado,
+  `testes/TESTSYS1.BAS`/`TESTSYS2.BAS`, 2026-08-15, reproduzido 2x):
+  diálogo do erro não é só "clicar OK" — precisa de **OK → F5 (retomar
+  execução) → sair da IDE manualmente**, três ações humanas. Só depois
+  da saída manual da IDE o DOS volta ao prompt e um `-c` seguinte do
+  DOSBox roda. Clicar OK sozinho só fecha o diálogo, não retoma o
+  programa
+* **A causa não é "deu erro", é "apareceu diálogo".** Erro trapeado sem
+  diálogo (idioma com `RESUME` acima) deixa a IDE em modo "executando" o
+  tempo todo — `SYSTEM` funciona igual a um programa sem erro nenhum,
+  volta ao DOS sozinho. O diálogo modal é que muda o estado da IDE pra
+  "parado no editor", e só saída manual da IDE tira desse estado —
+  `SYSTEM` não sabe fazer isso. Por isso o idioma com `RESUME` resolve
+  de vez o encadeamento via `-c` do DOSBox, não é só estilo mais limpo
+
 ## `DIR$` não existe neste dialeto
 
 * Idiomatismo de Visual Basic, não de QBasic/QuickBASIC
@@ -94,6 +161,21 @@ arquitetura escolhida, não óbvias a partir do código.
   chamada, guardando o resultado numa `SHARED` que a SUB só lê
 * Confirmado pelo usuário em 2026-08-08, depois de eu colocar o rótulo
   dentro de `SUB AbreIndice` em `ARVDISCO.BAS` por engano
+
+## `TYPE...END TYPE` tem que vir antes de qualquer `DECLARE` que o use
+
+* `DECLARE SUB Foo (x AS MeuTipo)` **antes** de `TYPE MeuTipo...END TYPE`
+  no arquivo dá erro **"Type not defined"** no `QBASIC.EXE`, cursor no
+  parâmetro do tipo indefinido — mesmo o `TYPE` estando definido mais
+  abaixo no mesmo arquivo
+* Diferente de `SUB`/`FUNCTION` (podem ser declaradas antes de
+  definidas, é pra isso que serve `DECLARE`) — `TYPE` não tem essa
+  flexibilidade, ordem física no arquivo importa
+* **Ordem correta:** todo bloco `TYPE...END TYPE` usado em algum
+  `DECLARE` vem antes do bloco de `DECLARE SUB`/`DECLARE FUNCTION`
+* Confirmado ao vivo no `QBASIC.EXE`, `testes/CLIVAL1.BAS`, 2026-08-15
+  (usuário reportou o diálogo); mesmo erro existia em `CLIENTES.BAS`
+  (TYPE depois do bloco DECLARE), corrigido junto
 
 ## Cliente "Consumidor" (ID 0) não é um registro real
 
