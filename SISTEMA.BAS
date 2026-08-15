@@ -8,15 +8,15 @@
 DECLARE SUB AbreIndiceCliente ()
 DECLARE SUB AbreIndiceProduto ()
 
-' REPETICAO: bloco CONST/DIM (arrays de cache)/COMMON SHARED do topo de
-' arvore, replicado por exigencia do casamento posicional do COMMON -
-' ver docs/duplicacoes.md e docs/armadilhas.md
+' REPETICAO: bloco CONST/COMMON SHARED do topo de arvore, replicado por
+' exigencia do casamento posicional do COMMON - ver docs/duplicacoes.md
+' e docs/armadilhas.md
 CONST tamChaveCliente% = 11        ' CPF normalizado
 CONST tamChaveProduto% = 13        ' codigo de barras EAN-13
 CONST RRNPRIMEIRONO& = 1           ' tambem e SEMPRE o RRN da raiz - ver docs/decisoes.md
 
-CONST capacidadeCacheCliente% = 50   ' pequeno de proposito no kickoff
-CONST capacidadeCacheProduto% = 100  ' (producao: ver docs/arquitetura-tecnica.md)
+CONST capacidadeCacheCliente% = 500   ' teto real medido - ver docs/decisoes.md
+CONST capacidadeCacheProduto% = 5041  ' teto de array dinamico (65536\13) - ver docs/decisoes.md
 
 CONST RRNULTIMOCACHECliente& = RRNPRIMEIRONO& + capacidadeCacheCliente% - 1
 CONST RRNULTIMOCACHEProduto& = RRNPRIMEIRONO& + capacidadeCacheProduto% - 1
@@ -50,13 +50,10 @@ END TYPE
 ' qtdInseridos derivados de LOF, qtdExcluidos tabulado na carga do cache
 ' - ver docs/decisoes.md (2026-08-14) e testes/CADCLI1.BAS/CADCLI3.BAS
 
-DIM cacheClienteChave(RRNPRIMEIRONO& TO RRNULTIMOCACHECliente&) AS STRING * 11
-DIM cacheClienteEsq(RRNPRIMEIRONO& TO RRNULTIMOCACHECliente&) AS LONG
-DIM cacheClienteDir(RRNPRIMEIRONO& TO RRNULTIMOCACHECliente&) AS LONG
-
-DIM cacheProdutoChave(RRNPRIMEIRONO& TO RRNULTIMOCACHEProduto&) AS STRING * 13
-DIM cacheProdutoEsq(RRNPRIMEIRONO& TO RRNULTIMOCACHEProduto&) AS LONG
-DIM cacheProdutoDir(RRNPRIMEIRONO& TO RRNULTIMOCACHEProduto&) AS LONG
+' Arrays de cache sao DINAMICOS (sem bounds aqui, so tipo) - dimensionados
+' via REDIM mais abaixo, 1x por sessao, dentro do guarda
+' indicesCarregados. Estatico (DIM com bounds fixos) nao cabe: os dois
+' juntos passam do teto de 64KB do DGROUP - ver docs/armadilhas.md.
 
 ' Replicar identico (mesma ordem, mesmas CONST) em todo modulo da
 ' corrente de CHAIN - ver docs/armadilhas.md.
@@ -74,6 +71,14 @@ DIM opcao AS STRING
   ' CLIENTE.IDX/PRODUTO.IDX como #1/#2 de novo ao voltar do menu. Ver
   ' docs/armadilhas.md.
   IF indicesCarregados = 0 THEN
+    REDIM cacheClienteChave(RRNPRIMEIRONO& TO RRNULTIMOCACHECliente&) AS STRING * 11
+    REDIM cacheClienteEsq(RRNPRIMEIRONO& TO RRNULTIMOCACHECliente&) AS LONG
+    REDIM cacheClienteDir(RRNPRIMEIRONO& TO RRNULTIMOCACHECliente&) AS LONG
+
+    REDIM cacheProdutoChave(RRNPRIMEIRONO& TO RRNULTIMOCACHEProduto&) AS STRING * 13
+    REDIM cacheProdutoEsq(RRNPRIMEIRONO& TO RRNULTIMOCACHEProduto&) AS LONG
+    REDIM cacheProdutoDir(RRNPRIMEIRONO& TO RRNULTIMOCACHEProduto&) AS LONG
+
     CALL AbreIndiceCliente
     CALL AbreIndiceProduto
     indicesCarregados = -1

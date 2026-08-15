@@ -33,27 +33,23 @@ DECLARE SUB PedeCamposNovoCliente (reg AS NoClientePrimario)
 DECLARE SUB PedeCamposEdicaoCliente (reg AS NoClientePrimario)
 DECLARE FUNCTION ChaveFixaCPF$ (cpfBruto AS STRING)
 
-' REPETICAO: bloco CONST/DIM (arrays de cache)/COMMON SHARED do topo de
-' arvore, replicado por exigencia do casamento posicional do COMMON -
-' ver docs/duplicacoes.md e docs/armadilhas.md
+' REPETICAO: bloco CONST/COMMON SHARED do topo de arvore, replicado por
+' exigencia do casamento posicional do COMMON - ver docs/duplicacoes.md
+' e docs/armadilhas.md
 CONST tamChaveCliente% = 11        ' CPF normalizado
 CONST tamChaveProduto% = 13        ' codigo de barras EAN-13
 CONST RRNPRIMEIRONO& = 1           ' tambem e SEMPRE o RRN da raiz - ver docs/decisoes.md
 
-CONST capacidadeCacheCliente% = 50   ' precisa casar com SISTEMA.BAS
-CONST capacidadeCacheProduto% = 100  ' idem
+CONST capacidadeCacheCliente% = 500   ' precisa casar com SISTEMA.BAS
+CONST capacidadeCacheProduto% = 5041  ' idem
 
 CONST RRNULTIMOCACHECliente& = RRNPRIMEIRONO& + capacidadeCacheCliente% - 1
 CONST RRNULTIMOCACHEProduto& = RRNPRIMEIRONO& + capacidadeCacheProduto% - 1
 CONST ESQUERDO% = 1, DIREITO% = 2
 
-DIM cacheClienteChave(RRNPRIMEIRONO& TO RRNULTIMOCACHECliente&) AS STRING * 11
-DIM cacheClienteEsq(RRNPRIMEIRONO& TO RRNULTIMOCACHECliente&) AS LONG
-DIM cacheClienteDir(RRNPRIMEIRONO& TO RRNULTIMOCACHECliente&) AS LONG
-
-DIM cacheProdutoChave(RRNPRIMEIRONO& TO RRNULTIMOCACHEProduto&) AS STRING * 13
-DIM cacheProdutoEsq(RRNPRIMEIRONO& TO RRNULTIMOCACHEProduto&) AS LONG
-DIM cacheProdutoDir(RRNPRIMEIRONO& TO RRNULTIMOCACHEProduto&) AS LONG
+' Arrays de cache sao dinamicos, dimensionados via REDIM 1x em
+' SISTEMA.BAS - aqui so declara (COMMON SHARED), nunca redimensiona de
+' novo (REDIM sempre zera - ver docs/armadilhas.md).
 
 COMMON SHARED proxRRNLivreCliente AS LONG, qtdInseridosCliente AS LONG, qtdExcluidosCliente AS LONG
 COMMON SHARED proxRRNLivreProduto AS LONG, qtdInseridosProduto AS LONG, qtdExcluidosProduto AS LONG

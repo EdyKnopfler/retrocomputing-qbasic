@@ -135,3 +135,50 @@ autoindexado, sem `dadoRRN` — só o secundário estava validado em
   `MarcaRemovido`): sobrescreve os campos de negócio e zera `excluido`
   no mesmo RRN, em vez de criar um nó novo — evita a mesma chave em duas
   posições da árvore. Duplicado **ativo** continua rejeitado
+
+## 2026-08-15 — Capacidade real dos arrays de cache: 500 clientes / 5041 produtos, via array dinâmico
+
+Motivação: os `CONST capacidadeCacheCliente%`/`capacidadeCacheProduto%`
+estavam em placeholders pequenos (50/100, "de propósito no kickoff").
+Faltava medir o orçamento real e decidir a capacidade de produção.
+
+- **Medição:** `PRINT FRE(-1)` ANTES de qualquer array de cache existir
+  (`testes/MEMFRE1.BAS`) deu **158940 bytes** — esse é o pool de array
+  **dinâmico** (heap), não o DGROUP estático (só ficou claro depois, ver
+  próximo bullet)
+- **Tentativa inicial (25%/75% do orçamento) descartada:** 25% de
+  158940 dá ~2091 clientes — muito mais que "algumas dezenas" cogitado
+  inicialmente. Decisão final não seguiu percentual fixo: partiu de 500
+  clientes (folga generosa sobre o porte alvo de "algumas centenas",
+  [[regras-de-negocio]]) e maximizou produto dentro do que sobra
+- **`DIM` estático de 500+5041 juntos deu "Out of memory" ao vivo**,
+  apesar de `FRE(-1)` indicar memória de sobra. Causa raiz, confirmada
+  no manual oficial (`DIM`, qbasic.net) — ver [[armadilhas]]: array
+  **estático** vive inteiro dentro do **DGROUP**, que tem teto de 64KB
+  **pro segmento inteiro** (soma de tudo que é estático), não por array.
+  Cliente+produto juntos (~115KB) estouram isso de longe — `FRE(-1)`
+  nunca mediu essa restrição porque mede outro pool (o dinâmico)
+- **Solução: arrays de cache viraram dinâmicos.** `COMMON SHARED nome()
+  AS tipo` (sem bounds) + `REDIM nome(bounds) AS tipo` só em
+  `SISTEMA.BAS`, dentro do guarda `indicesCarregados = 0` (`REDIM`
+  sempre zera o array — rodar de novo a cada `CHAIN` apagaria o cache
+  já populado, por isso tem que ficar preso ao guarda de "só 1x por
+  sessão"). `CLIENTES.BAS`/`PRODUTOS.BAS` só têm o `COMMON SHARED`
+  (declaração), nunca `REDIM`
+- **Validado que `CHAIN` preserva o conteúdo do array dinâmico** sem
+  precisar `REDIM` de novo no módulo destino — teste isolado
+  `testes/CHAINA1.BAS`/`CHAINB1.BAS` (`REDIM`+popula em A, `CHAIN` pra
+  B, B só declara `COMMON SHARED` e lê os valores intactos)
+- **`REDIM ... PRESERVE` não existe na QB 1.1** (só na QuickBASIC PDS
+  7.1, ausente da doc da QB 1.1) — não é só idiomatismo de VB como se
+  pensou a princípio. Sem impacto aqui: só rodamos `REDIM` 1x, em array
+  ainda vazio — ver [[armadilhas]]
+- **Teto por array dinâmico (65536 bytes) bate exatamente no campo
+  chave** — 65536\13 = 5041 produtos, 65536\11 = 5957 clientes (campo
+  mais largo do array SoA de cada entidade)
+- **Capacidade final: `capacidadeCacheCliente% = 500`,
+  `capacidadeCacheProduto% = 5041`** (teto de array). Validado contra
+  os `.IDX` reais do usuário (`testes/SISVAL3.BAS`): carga correta (1
+  cliente, 2 produtos, valores conferem), `FRE(-1)` sobra ~40848 bytes
+  depois da carga completa dos dois índices
+- Detalhes numéricos e tabelas: [[arquitetura-tecnica]]

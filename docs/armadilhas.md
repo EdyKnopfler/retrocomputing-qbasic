@@ -45,11 +45,45 @@ arquitetura escolhida, não óbvias a partir do código.
   END IF
   ```
 
-## Limite de 64KB por array
+## Limite de 64KB: por array só se for dinâmico — estático divide o DGROUP inteiro
 
-* QBasic não suporta "huge arrays" (só o BASIC PDS com `/AH`) — teto de
-  65536 bytes **por array**, não pelo total de estática disponível. Ver
-  [[arquitetura-tecnica]]
+* Array **estático** (`DIM`/`COMMON SHARED` com bounds de `CONST`/número
+  literal): alocado em tempo de compilação, dentro do **DGROUP**
+  (segmento de dados padrão) — teto de 64KB é **do segmento inteiro**,
+  somando TODOS os arrays/variáveis estáticos juntos, não por array
+  individual. Confirmado no manual (`DIM`, qbasic.net): "if the array
+  size exceeds 64K, if the array is not dynamic... you may get an error
+  message that reads... 'Array too big'" — e **"Out of memory"** na
+  prática, reproduzido ao vivo tentando `DIM` estático de
+  `cacheClienteChave`(500)+`cacheProdutoChave`(5041) juntos (~115KB
+  somados, estoura os 64KB do DGROUP mesmo com `FRE(-1)` reportando bem
+  mais que isso disponível — ver próximo bullet), 2026-08-15
+* Array **dinâmico** (`REDIM`, ou `DIM`/`COMMON SHARED` com bounds
+  vindos de variável): alocado em tempo de execução, **fora do DGROUP**
+  (heap/memória convencional) — aí sim o teto é de 65536 bytes **por
+  array individual**, e o total entre vários arrays dinâmicos é limitado
+  só pelo `FRE(-1)` (que mede esse pool separado, não o DGROUP). Trocar
+  `DIM` por `COMMON SHARED nome() AS tipo` + `REDIM nome(bounds) AS
+  tipo` resolveu o "Out of memory" acima sem mudar o tamanho pedido —
+  ver [[decisoes]]
+* **Pegadinha:** `FRE(-1)` ("size of the largest nonstring array that
+  could be dimensioned") mede o pool de array **dinâmico**, não o
+  DGROUP estático — um valor alto de `FRE(-1)` não garante que um `DIM`
+  estático do mesmo tamanho vai caber
+* Ver [[arquitetura-tecnica]]
+
+## `REDIM ... PRESERVE` não existe na QB 1.1 (só QB 7.1/QuickBASIC PDS)
+
+* Idiomatismo que parece familiar de Visual Basic, mas **nem é exclusivo
+  do VB** — existe na QuickBASIC PDS 7.1 (paga), mas está **ausente da
+  documentação da QB 1.1** (o `QBASIC.EXE` gratuito, nosso alvo real)
+* Nesse dialeto, `REDIM` **sempre** zera o array (todo elemento numérico
+  vira 0, toda string vira vazia) — não tem como redimensionar mantendo
+  dado. Se precisar reaproveitar conteúdo ao mudar de tamanho, a
+  alternativa é copiar manualmente pra outro array antes do `REDIM`
+* Nosso uso de `REDIM` (arrays de cache de árvore) não esbarra nisso: só
+  roda 1x, dentro do guarda `indicesCarregados = 0` de [[armadilhas]] ("CHAIN reinicia..."), antes de o array ter
+  qualquer dado — zerar nesse ponto é inofensivo
 
 ## Risco de degeneração sob endereçamento implícito (posicional)
 

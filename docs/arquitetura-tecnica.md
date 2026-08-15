@@ -70,34 +70,73 @@
 
 ### Orçamento medido
 
-* `PRINT FRE(-1), FRE(-2), FRE("")` (ver `SISTEMA.BAS`):
+* `PRINT FRE(-1), FRE(-2), FRE("")`, medido ANTES de qualquer array de
+  cache existir (`testes/MEMFRE1.BAS`), 2026-08-15:
 
 | Área | Bytes livres |
 |---|---|
-| Alocação estática (arrays/variáveis) | 157972 |
+| Array dinâmico (heap, fora do DGROUP — ver seção abaixo) | 158940 |
 | Stack | 1052 |
-| Strings | 30884 |
+| Strings | 30124 |
 
-* Estática é a relevante — de onde saem os arrays de topo de árvore
-  (`COMMON SHARED`)
+* Esse número mede o pool de **array dinâmico**, não o DGROUP estático
+  — é desse pool que os arrays de topo de árvore (`COMMON SHARED`) saem
 
-### Limite de 64KB por array
+### Estático vs. dinâmico: dois tetos diferentes, não um só
 
-* QBasic não suporta "huge arrays" (só o BASIC PDS com `/AH` suporta):
-  teto de 65536 bytes **por array**, não pelo total de estática
+Descoberto tentando `DIM` estático das arrays de cache no tamanho de
+produção (500 clientes / 5041 produtos, ~115KB somados): deu **"Out of
+memory"** ao vivo, mesmo com `FRE(-1)` relatando bem mais que isso de
+sobra. Causa confirmada no manual (`DIM`, qbasic.net) — detalhe completo
+em [[armadilhas]]:
+
+* **Array estático** (`DIM`/`COMMON SHARED` com bounds de `CONST`):
+  alocado em tempo de compilação, dentro do **DGROUP** — teto de 64KB é
+  do **segmento inteiro**, somando todos os arrays/variáveis estáticos
+  juntos, não por array. Cliente+produto juntos nunca cabem aí
+* **Array dinâmico** (`REDIM`): alocado em tempo de execução, fora do
+  DGROUP (heap) — aí sim o teto de 65536 bytes é **por array
+  individual**, e o total entre vários arrays dinâmicos é limitado só
+  pelo pool medido por `FRE(-1)` acima, não pelos 64KB do DGROUP
+* **Solução adotada:** arrays de cache são **dinâmicos** — declarados
+  via `COMMON SHARED nome() AS tipo` (sem bounds) e dimensionados por
+  `REDIM` **uma única vez**, só em `SISTEMA.BAS`, dentro do guarda
+  `indicesCarregados = 0` (`REDIM` sempre zera o array — rodar de novo
+  a cada `CHAIN` apagaria o cache já populado). `CLIENTES.BAS`/
+  `PRODUTOS.BAS` só declaram `COMMON SHARED`, nunca `REDIM` — ver
+  [[decisoes]]
+
+### Teto de 65536 bytes por array (dinâmico)
+
+Tabela histórica (decisão de ponteiros explícitos + SoA vs. `TYPE`,
+contexto de índice **secundário** com `dadoRRN` — ver [[decisoes]]):
 
 | Esquema de nó | Bytes/nó | Nós/array (64KB) |
 |---|---|---|
 | Ponteiros explícitos (chave 13B EAN + RRN esq./dir./dado, `LONG`) | 25 | ~2620 |
 | Endereçamento implícito (chave + RRN dado) | 17 | ~3855 |
 
+Números reais do índice **primário** autoindexado atual (sem
+`dadoRRN` — só chave+esquerda+direita, cada campo em array próprio):
+
+| Cache | Campo mais largo | Bytes/elemento | Teto (65536 ÷ bytes) |
+|---|---|---|---|
+| Cliente (chave CPF) | `cacheClienteChave` | 11 | 5957 |
+| Produto (chave EAN-13) | `cacheProdutoChave` | 13 | 5041 |
+
+* `esquerda`/`direita` (`LONG`, 4 bytes/elemento) nunca são o gargalo —
+  cabem 16384 elementos nesse teto
+* **Capacidade final adotada: 500 clientes / 5041 produtos** — medido e
+  validado contra os `.IDX` reais (`testes/MEMFRE2.BAS`,
+  `testes/MEMFRE3.BAS`, `testes/SISVAL3.BAS`), sobrando ~40KB livres
+  após a carga dos dois índices. Motivo da divisão (não é 25%/75% do
+  orçamento): produto já bate o teto de array bem antes de consumir a
+  fração de orçamento equivalente — ver [[decisoes]]
 * Produtos (algumas milhares, [[regras-de-negocio]]): topo em RAM nunca
-  cobre o cadastro inteiro em nenhum esquema — resto fica no arquivo
-  (comportamento já previsto)
-* Clientes por CPF (11B, algumas centenas): cabe inteiro em RAM com folga
-* **Conclusão:** não há divisão delicada de orçamento entre os dois
-  índices — clientes usa o pouco que precisa, produtos usa o máximo que
-  o teto de 64KB permitir
+  cobre o cadastro inteiro — resto fica no arquivo (comportamento já
+  previsto)
+* Clientes por CPF (algumas centenas, [[regras-de-negocio]]): 500 de
+  cache cobre o porte alvo inteiro com folga
 
 ### `COMMON SHARED` entre módulos encadeados
 

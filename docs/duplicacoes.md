@@ -44,7 +44,7 @@ o módulo que de fato usa `GET`/`PUT` naquele arquivo precisa do `TYPE`.
 - `TYPE NoClientePrimario`: `SISTEMA.BAS`, `CLIENTES.BAS`
 - `TYPE NoProdutoPrimario`: `SISTEMA.BAS`, `PRODUTOS.BAS`
 
-## Bloco `CONST`/`DIM` (arrays de cache)/`COMMON SHARED` do topo de árvore
+## Bloco `CONST`/`COMMON SHARED` do topo de árvore
 
 Motivo é diferente do resto deste índice: não é duplicação "por chave"
 (a lógica não muda de arquivo pra arquivo) — os valores são idênticos
@@ -56,12 +56,19 @@ nenhuma parametrização — ao contrário das SUBs de árvore acima, que
 mudam de assinatura por chave e continuariam duplicadas mesmo com
 `$INCLUDE` (só um genérico de verdade, que QBasic não tem, resolveria).
 
+Assimetria desde 2026-08-15 (arrays de cache viraram dinâmicos — ver
+[[decisoes]]): só `SISTEMA.BAS` tem `REDIM` (dimensiona, 1x, dentro do
+guarda `indicesCarregados = 0`); `CLIENTES.BAS`/`PRODUTOS.BAS` têm só a
+declaração `COMMON SHARED`, sem `DIM` nem `REDIM` — `REDIM` de novo
+zeraria o cache já populado.
+
 - `CONST tamChaveCliente%` até `RRNULTIMOCACHEProduto&`: `SISTEMA.BAS`,
   `CLIENTES.BAS`, `PRODUTOS.BAS` (`ESQUERDO%`/`DIREITO%` só em
   `CLIENTES.BAS`/`PRODUTOS.BAS` — `SISTEMA.BAS` só carrega o cache, não
-  percorre a árvore)
-- `DIM cacheClienteChave/Esq/Dir`, `cacheProdutoChave/Esq/Dir`:
-  `SISTEMA.BAS`, `CLIENTES.BAS`, `PRODUTOS.BAS`
+  percorre a árvore). Valores atuais: `capacidadeCacheCliente% = 500`,
+  `capacidadeCacheProduto% = 5041`
+- `REDIM cacheClienteChave/Esq/Dir`, `cacheProdutoChave/Esq/Dir`: só
+  `SISTEMA.BAS`, dentro do guarda `indicesCarregados = 0`
 - `COMMON SHARED` (contadores `proxRRNLivre*`/`qtdInseridos*`/
   `qtdExcluidos*`, arrays de cache, `indicesCarregados`):
   `SISTEMA.BAS`, `CLIENTES.BAS`, `PRODUTOS.BAS`

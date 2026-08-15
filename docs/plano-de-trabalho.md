@@ -161,7 +161,14 @@ que uma sintaxe/função é válida.
     `CLIENTES.BAS`, já provado) — só o que muda foi checado headless
     em `testes/PRDVAL1.BAS`, 16/16 verificações OK (inclui `SINGLE`
     sobrevivendo ao `GET`/`PUT` com casas decimais)
-  * Camada de tela **não validada interativamente ainda** — só smoke
-    test headless confirmando que carrega sem diálogo de sintaxe
+  * Camada de tela validada manualmente pelo usuário no `QBASIC.EXE` de
+    verdade (inserção, busca, edição, remoção e reativação de RRN
+    removido, tudo confirmado), 2026-08-15: aprovado
+* **Capacidade real dos arrays de cache definida:** 500 clientes / 5041
+  produtos (antes: placeholders 50/100 de kickoff), 2026-08-15 — medição
+  de `FRE(-1)` revelou que array **estático** (`DIM`) e **dinâmico**
+  (`REDIM`) têm tetos diferentes (64KB do DGROUP inteiro vs. 64KB por
+  array), forçando a troca das arrays de cache pra dinâmicas. Detalhes:
+  [[decisoes]], [[arquitetura-tecnica]], [[armadilhas]]
 * Decisão de conteúdo do nó (ponteiros explícitos vs. implícitos): já
   fechada — ver [[decisoes]] e [[armadilhas]]
